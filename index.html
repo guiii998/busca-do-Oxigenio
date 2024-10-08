@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema Respiratorio: A Luta por Ar Puro</title>
+    <style>
+        /* Fonte personalizada */
+        @font-face {
+            font-family: 'NovaFonte';
+            src: url('fonts/NovaFonte.ttf') format('truetype');
+            font-weight: normal;
+            font-style: normal;
+        }
+
+        /* Reset de margens e preenchimentos */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        /* Estilos para o corpo e html para ocupar a tela inteira */
+        body, html {
+            width: 100%;
+            height: 100%;
+            font-family: 'NovaFonte', sans-serif;
+            overflow: hidden;
+        }
+
+        /* Contêiner principal do jogo */
+        #game-container {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            background: #b4e0fe; /* Cor de fallback */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Área do jogo ocupando toda a tela */
+        #game-area {
+            width: 100%;
+            height: 100%;
+            background-image: url('images/fundo.png'); /* Caminho para a imagem de fundo */
+            background-size: cover; /* Faz a imagem cobrir toda a área */
+            background-repeat: no-repeat; /* Evita que a imagem se repita */
+            background-position: center center; /* Centraliza a imagem */
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Classe para ocultar o cursor */
+        .hide-cursor {
+            cursor: none;
+        }
+
+        /* Estilo do jogador */
+        #player {
+            position: absolute;
+            width: 120px; /* Aumentado para 120px */
+            height: 120px; /* Aumentado para 120px */
+            transition: all 0.05s linear; /* Transição mais rápida para suavidade */
+            /* Inicialmente escondido */
+            display: none;
+            pointer-events: none; /* Evita interferência com eventos de mouse */
+        }
+
+        /* Estilo dos objetos do jogo */
+        .game-object {
+            position: absolute;
+            width: 80px; /* Aumentado para 80px */
+            height: 80px; /* Aumentado para 80px */
+            top: -80px; /* Ajustado para o novo tamanho */
+        }
+
+        /* Pontuação */
+        #score {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            font-size: 20px;
+            color: black;
+            background: rgba(255, 255, 255, 0.7);
+            padding: 5px 10px;
+            border-radius: 5px;
+            z-index: 5;
+        }
+
+        /* Vidas */
+        #lives {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            font-size: 20px;
+            color: red;
+            background: rgba(255, 255, 255, 0.7);
+            padding: 5px 10px;
+            border-radius: 5px;
+            z-index: 5;
+        }
+
+        /* Mensagem de fim de jogo */
+        #message {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 24px;
+            color: white;
+            background-color: rgba(0, 0, 0, 0.8); /* Fundo semi-transparente */
+            z-index: 10;
+            text-align: center;
+            padding: 20px;
+            box-sizing: border-box;
+            flex-direction: column;
+            gap: 20px; /* Espaçamento entre os elementos */
+            display: none; /* Inicialmente escondido */
+        }
+
+        /* Botões */
+        #start-btn, .play-again-btn {
+            font-family: 'NovaFonte', sans-serif;
+            font-size: 20px;
+            padding: 15px 30px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        /* Estilização de hover para os botões */
+        #start-btn:hover, .play-again-btn:hover {
+            background-color: #45a049;
+            /* Mantém a escala apenas para o botão em estado de hover */
+            transform: scale(1.05);
+        }
+
+        /* Centralização e camada superior para #start-btn */
+        #start-btn {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 6; /* Aumentado para ficar acima do #score e #lives */
+        }
+
+        /* Classes adicionais, caso necessário */
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <h1>Sistema Respiratorio: A Luta por Ar Puro</h1>
+        <div id="game-area">
+            <div id="score">Pontuacao: 0</div>
+            <div id="lives">Vidas: 3</div>
+            <button id="start-btn" onclick="startGame()">Comecar Jogo</button>
+            <div id="message">
+                <div id="message-text"></div>
+                <button class="play-again-btn" onclick="playAgain()">Jogar Novamente</button>
+            </div>
+            <img id="player" src="images/pulmao.png" alt="Pulmao jogador">
+        </div>
+    </div>
+
+    <script>
+        // Variáveis do jogo
+        let score = 0;
+        let points = 0;
+        let oxygenCount = 0;
+        let lives = 3;
+        let gameActive = false;
+        let playerSpeed = 10; // Velocidade de movimento do jogador aumentada
+        let objectSpeed = 5;  // Velocidade de objetos aumentada
+        let oxygenFrequency = 0.7;
+        let gameInterval;
+        let playCount = 0;
+
+        // Elementos do DOM
+        const gameArea = document.getElementById('game-area');
+        const messageDiv = document.getElementById('message');
+        const messageText = document.getElementById('message-text');
+        const startBtn = document.getElementById('start-btn');
+        const scoreDiv = document.getElementById('score');
+        const livesDiv = document.getElementById('lives');
+        const player = document.getElementById('player');
+
+        // Controle de teclas pressionadas
+        const keys = {};
+
+        // Adiciona eventos de teclado
+        document.addEventListener('keydown', (e) => {
+            keys[e.code] = true;
+        });
+
+        document.addEventListener('keyup', (e) => {
+            keys[e.code] = false;
+        });
+
+        // Evento de movimento do mouse
+        gameArea.addEventListener('mousemove', (e) => {
+            if (!gameActive) return;
+
+            if (!isAnyKeyPressed()) {
+                const rect = gameArea.getBoundingClientRect();
+                const mouseX = e.clientX - rect.left;
+                const mouseY = e.clientY - rect.top;
+
+                // Atualiza a posição do personagem diretamente sem delay
+                player.style.left = `${mouseX - player.clientWidth / 2}px`;
+                player.style.top = `${mouseY - player.clientHeight / 2}px`;
+            }
+        });
+
+        // Inicia o jogo
+        function startGame() {
+            if (gameActive) return;
+            gameActive = true;
+            score = 0;
+            points = 0;
+            oxygenCount = 0;
+            lives = 3;
+            playerSpeed = 10;
+            objectSpeed = 5;
+            oxygenFrequency = 0.7;
+            updateScore();
+            updateLives();
+            startBtn.style.display = 'none';
+            messageDiv.style.display = 'none';
+
+            // Oculta o cursor durante o jogo
+            gameArea.classList.add('hide-cursor');
+
+            // Centraliza o jogador na tela
+            player.style.left = `${(gameArea.clientWidth - player.clientWidth) / 2}px`;
+            player.style.top = `${(gameArea.clientHeight - player.clientHeight) / 2}px`;
+            player.style.display = 'block';
+
+            // Inicia o loop do jogo
+            gameInterval = setInterval(gameLoop, 20);
+            spawnObjects();
+        }
+
+        // Função principal do jogo
+        function gameLoop() {
+            movePlayer();
+            moveObjects();
+            checkCollisions();
+        }
+
+        // Movimentação do jogador via teclado
+        function movePlayer() {
+            if (!gameActive) return;
+
+            let dx = 0;
+            let dy = 0;
+
+            // Movimentação via teclado (WASD e setas)
+            if (keys['ArrowLeft'] || keys['KeyA']) dx -= playerSpeed;
+            if (keys['ArrowRight'] || keys['KeyD']) dx += playerSpeed;
+            if (keys['ArrowUp'] || keys['KeyW']) dy -= playerSpeed;
+            if (keys['ArrowDown'] || keys['KeyS']) dy += playerSpeed;
+
+            if (dx !== 0 || dy !== 0) {
+                // Atualiza posição do jogador com limites
+                let newLeft = player.offsetLeft + dx;
+                let newTop = player.offsetTop + dy;
+
+                // Garantir que o jogador não saia da área de jogo
+                newLeft = Math.max(0, Math.min(gameArea.clientWidth - player.clientWidth, newLeft));
+                newTop = Math.max(0, Math.min(gameArea.clientHeight - player.clientHeight, newTop));
+
+                player.style.left = `${newLeft}px`;
+                player.style.top = `${newTop}px`;
+            }
+        }
+
+        // Verifica se alguma tecla de movimento está pressionada
+        function isAnyKeyPressed() {
+            return keys['ArrowLeft'] || keys['KeyA'] ||
+                   keys['ArrowRight'] || keys['KeyD'] ||
+                   keys['ArrowUp'] || keys['KeyW'] ||
+                   keys['ArrowDown'] || keys['KeyS'];
+        }
+
+        // Spawn de objetos (cigarros e O₂)
+        function spawnObjects() {
+            if (!gameActive) return;
+            if (document.querySelectorAll('.game-object').length < 10) {
+                createObject();
+            }
+            setTimeout(spawnObjects, Math.max(500, 1500 - score * 20));
+        }
+
+        // Cria um objeto aleatório
+        function createObject() {
+            const object = document.createElement('img');
+            object.className = 'game-object';
+            object.style.left = `${Math.random() * (gameArea.clientWidth - 80)}px`; // Ajustado para novo tamanho
+
+            const rand = Math.random();
+            if (rand < oxygenFrequency) {
+                object.src = "images/o2.png"; // Caminho para a imagem de O₂
+                object.dataset.type = 'oxygen';
+                object.alt = "Molecula de O2";
+            } else {
+                object.src = "images/cigarro.png"; // Caminho para a imagem do cigarro
+                object.dataset.type = 'cigarette';
+                object.alt = "Cigarro";
+            }
+
+            gameArea.appendChild(object);
+        }
+
+        // Move os objetos para baixo
+        function moveObjects() {
+            const objects = document.querySelectorAll('.game-object');
+            objects.forEach(obj => {
+                const top = parseFloat(obj.style.top) || 0;
+                if (top > gameArea.clientHeight) {
+                    obj.remove();
+                } else {
+                    obj.style.top = `${top + objectSpeed}px`;
+                }
+            });
+        }
+
+        // Verifica colisões entre o jogador e os objetos
+        function checkCollisions() {
+            const objects = document.querySelectorAll('.game-object');
+            const playerRect = player.getBoundingClientRect();
+
+            objects.forEach(obj => {
+                const objRect = obj.getBoundingClientRect();
+                if (isColliding(playerRect, objRect)) {
+                    handleCollision(obj);
+                }
+            });
+        }
+
+        // Lida com a colisão
+        function handleCollision(obj) {
+            if (obj.dataset.type === 'oxygen') {
+                score++;
+                points += 10;
+                oxygenCount++;
+                playerSpeed += 0.5; // Aumenta a velocidade
+                objectSpeed += 0.2;
+                oxygenFrequency -= 0.005;
+                oxygenFrequency = Math.max(0.1, oxygenFrequency);
+                updateScore();
+
+                if (oxygenCount >= 15) {
+                    showMessage("Parabens :) VOCE VENCEU, AGORA PODE RECEBER O BRINDE 😁", true);
+                }
+            } else {
+                lives--;
+                updateLives();
+                if (lives <= 0) {
+                    endGame();
+                }
+            }
+            obj.remove();
+        }
+
+        // Função para verificar colisão entre dois retângulos
+        function isColliding(rect1, rect2) {
+            return !(rect1.right < rect2.left || 
+                     rect1.left > rect2.right || 
+                     rect1.bottom < rect2.top || 
+                     rect1.top > rect2.bottom);
+        }
+
+        // Atualiza a pontuação na tela
+        function updateScore() {
+            scoreDiv.textContent = `Pontuacao: ${points}`;
+        }
+
+        // Atualiza as vidas na tela
+        function updateLives() {
+            livesDiv.textContent = `Vidas: ${lives}`;
+        }
+
+        // Mostra mensagem de vitória ou derrota
+        function showMessage(msg, isWin) {
+            if (isWin) {
+                messageText.textContent = msg;
+            } else {
+                messageText.textContent = "GAME OVER! Voce perdeu todas as vidas.";
+            }
+            messageDiv.style.display = 'flex';
+            clearInterval(gameInterval);
+            gameActive = false;
+
+            // Mostra o cursor novamente
+            gameArea.classList.remove('hide-cursor');
+        }
+
+        // Finaliza o jogo
+        function endGame() {
+            showMessage("GAME OVER! Voce perdeu todas as vidas.", false);
+        }
+
+        // Reinicia o jogo e retorna ao menu inicial
+        function playAgain() {
+            // Remove todos os objetos do jogo
+            document.querySelectorAll('.game-object').forEach(obj => obj.remove());
+
+            // Oculta a mensagem
+            messageDiv.style.display = 'none';
+
+            // Esconde o jogador
+            player.style.display = 'none';
+
+            // Reseta as variáveis do jogo
+            score = 0;
+            points = 0;
+            oxygenCount = 0;
+            lives = 3;
+            playerSpeed = 10; // Velocidade inicial
+            objectSpeed = 5;  // Velocidade de objetos
+            oxygenFrequency = 0.7;
+
+            // Atualiza a pontuação e as vidas na tela
+            updateScore();
+            updateLives();
+
+            // Mostra o cursor novamente
+            gameArea.classList.remove('hide-cursor');
+
+            // Centraliza o jogador na tela (preparação para o próximo jogo)
+            player.style.left = `${(gameArea.clientWidth - player.clientWidth) / 2}px`;
+            player.style.top = `${(gameArea.clientHeight - player.clientHeight) / 2}px`;
+            player.style.display = 'none';
+
+            // Mostra o botão "Começar Jogo" novamente
+            startBtn.style.display = 'block';
+        }
+
+        // Adiciona evento para garantir que o cursor esteja visível no menu inicial
+        document.addEventListener('DOMContentLoaded', () => {
+            gameArea.classList.remove('hide-cursor');
+        });
+    </script>
+</body>
+</html>
